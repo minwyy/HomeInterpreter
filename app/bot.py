@@ -68,13 +68,17 @@ async def on_voice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         url = _file_url(f.file_path)
 
         # ASR 和 DeepSeek 都是阻塞调用，丢到线程里，别卡住事件循环
+        logger.info("ASR 开始: %s", url)
         transcript = await asyncio.to_thread(_asr_client().transcribe, audio_url=url)
+        logger.info("ASR 结果: %s", transcript)
         if not transcript:
             await placeholder.edit_text("（没识别到语音内容）")
             return
 
         if config.POLISH_ENABLED:
+            logger.info("DeepSeek 整理中…")
             text = await asyncio.to_thread(deepseek_client.polish, transcript)
+            logger.info("DeepSeek 结果: %s", text)
         else:
             text = transcript
 
