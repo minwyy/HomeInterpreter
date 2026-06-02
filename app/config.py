@@ -12,6 +12,9 @@ def _req(key: str) -> str:
     return val
 
 
+# 状态存储路径(SQLite 等)；容器里挂在 /data named volume，本地默认当前目录。
+DB_PATH = os.getenv("DB_PATH", "state.db")
+
 # Telegram
 TELEGRAM_BOT_TOKEN = _req("TELEGRAM_BOT_TOKEN")
 

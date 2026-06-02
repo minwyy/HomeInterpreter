@@ -47,6 +47,16 @@ python -m app.bot
 
 把 bot 拉进群、关掉隐私模式(并重新加回)后,群里发上海话语音,bot 会回一条中文。
 
+### Docker（推荐，跟 pims-micro 一致）
+
+```bash
+cp .env.example .env        # 填好 token 和密钥
+docker compose up -d --build
+docker compose logs -f      # 看日志
+```
+
+长轮询、纯出站连接,无需映射端口。状态(SQLite 等)写在 named volume `state`(挂载到 `/data`),`docker compose down` 不会丢;真要清空加 `-v`。
+
 ## 文件结构
 
 ```
@@ -62,17 +72,15 @@ app/
 - **Token 暴露**:Telegram 文件 URL 里带着 bot token,直接交给 Fun-ASR 去抓,等于把 token 暴露给阿里那边(经 https)。家庭量级影响很小。介意的话:把语音下载成字节、改用**实时 Fun-ASR**(收本地字节、不需要 URL),token 就不出本机。
 - **群里会很吵**:每条语音都回一条。想只处理特定群,用 `ALLOWED_CHAT_IDS` 白名单。想加触发条件(比如只在被回复/@时才转),在 `on_voice` 里加判断即可。
 - **延迟**:非实时 Fun-ASR 任务先排队(通常几秒,偶尔几分钟),所以先回「识别中…」占位,出结果再编辑那条消息。
-- **透明性**:Telegram 技术上允许你这么做,但群成员看得见 bot 在场。监听并转写他人语音,最好在群里说明一下。
-- **上海话精度**:国际区是 `fun-asr`,吴语自动识别。不理想的话可换北京区 Key + 改 `DASHSCOPE_HTTP_URL`,代码不动。
 
 ## Roadmap
 1. **One-day DeepSeek memory** — give the polish step short-term context: keep the last ~24h of transcripts per group (or per person), auto-expire older ones, so results can reference earlier messages and stay consistent in wording.
 2. **Speaker name before the text** — prefix each result with the speaker's name (e.g. `张三: …`) so it's clear who said what when multiple people talk.
-3. **Simple agent features** — let the bot understand a few simple commands and react: `retry` (re-transcribe/re-polish the last message), `summary` (summarize the recent conversation), `interpret in english` (translate the content to English).
+3. **Simple agent features** — let the bot understand a few simple commands and react: `retry` (re-transcribe/re-polish the last message), `summary` (summarize the recent conversation), `interpret in english` (translate the content to English). Set agent trigger words (e.g., "再讲"，"问问看", "帮帮忙" )
 4. ✅ **Use proper English place names in English output** *(done)* — English place names spoken in the audio (e.g. Ashfield) are recognized as English via Fun-ASR custom hotwords instead of being transliterated to Chinese. See `app/manage_vocab.py` and `FUNASR_HOTWORDS`.
 5. **Hotword source / management** — place-name hotwords currently live in `FUNASR_HOTWORDS` in `.env` and are pushed manually via `manage_vocab.py`. Add a better source: maintain the list in a file (or DB), or let users add words via a bot command, so hotwords can be updated without editing env vars and redeploying.
 
 ## 后续可做
 - 去重(同一 file_id 不重复识别)、把转写写进数据库做整群纪要。
 - 多条语音合并成一段会话上下文,喂 DeepSeek 出"群聊摘要"而非逐条转写。
-- 打包 Dockerfile + systemd,跟你 pims-micro 的部署方式对齐。
+- 状态(如 roadmap #1 的一天记忆)用 SQLite 落到 `/data`(named volume)。热词目前在 `.env` 的 `FUNASR_HOTWORDS`(经 `manage_vocab.py` 推到阿里云,不在本地 state);#5 才考虑搬到文件/DB。

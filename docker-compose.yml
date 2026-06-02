@@ -1,0 +1,15 @@
+services:
+  bot:
+    build: .
+    image: homeinterpreter:latest
+    container_name: homeinterpreter
+    restart: unless-stopped
+    env_file: .env          # token/密钥从 .env 注入，不进镜像
+    environment:
+      DB_PATH: /data/state.db
+    volumes:
+      - state:/data         # SQLite 等状态，跨重建/重启保留
+    # 长轮询、纯出站连接，无需 ports 映射
+
+volumes:
+  state:
