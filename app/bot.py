@@ -8,6 +8,7 @@
 """
 import asyncio
 import logging
+import random
 
 from telegram import Update
 from telegram.ext import (
@@ -39,6 +40,45 @@ def _allowed(chat_id: int) -> bool:
     return not config.ALLOWED_CHAT_IDS or chat_id in config.ALLOWED_CHAT_IDS
 
 
+async def _retry(fn, *, attempts, base_delay, what, on_retry=None, **kwargs):
+    """在线程里跑阻塞函数 fn(**kwargs)，只对【异常】(超时/5xx/限流等瞬时错误)重试。
+
+    指数退避 + 抖动，退避用 asyncio.sleep，不阻塞事件循环。空结果不算失败，
+    不重试(ASR 对同一音频是确定性的，重试只会得到同样的空)。
+    """
+    for i in range(attempts):
+        try:
+            return await asyncio.to_thread(fn, **kwargs)
+        except Exception as e:  # noqa: BLE001
+            if i == attempts - 1:
+                raise
+            delay = base_delay * (2 ** i) + random.uniform(0, base_delay)
+            logger.warning("%s 第%d/%d次失败: %s，%.1fs后重试", what, i + 1, attempts, e, delay)
+            if on_retry:
+                try:
+                    await on_retry(i + 1)
+                except Exception:  # noqa: BLE001
+                    pass  # 进度提示失败不影响重试
+            await asyncio.sleep(delay)
+
+
+async def _polish(transcript: str) -> str:
+    """整理转写文字：空结果或出错时重试一次；最终仍失败/为空则回退到原始转写。"""
+    for attempt in range(2):  # 初次 + 1 次重试
+        try:
+            text = await asyncio.to_thread(deepseek_client.polish, transcript)
+        except Exception as e:  # noqa: BLE001
+            logger.warning("DeepSeek 第%d次失败: %s", attempt + 1, e)
+            text = ""
+        if text:
+            return text
+        if attempt == 0:
+            logger.info("DeepSeek 返回空/出错，重试一次…")
+            await asyncio.sleep(1.0)
+    logger.info("DeepSeek 整理未成功，回退到原始转写")
+    return transcript
+
+
 def _file_url(file_path: str) -> str:
     """把 getFile 返回的 file_path 拼成可公网下载的完整 URL。"""
     if file_path.startswith("http"):
@@ -67,9 +107,17 @@ async def on_voice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         f = await context.bot.get_file(voice.file_id)
         url = _file_url(f.file_path)
 
-        # ASR 和 DeepSeek 都是阻塞调用，丢到线程里，别卡住事件循环
+        # ASR 和 DeepSeek 都是阻塞调用，丢到线程里，别卡住事件循环。
+        # ASR 只对瞬时异常重试(最多3次)；返回空表示确定性"没识别到"，不重试。
         logger.info("ASR 开始: %s", url)
-        transcript = await asyncio.to_thread(_asr_client().transcribe, audio_url=url)
+        transcript = await _retry(
+            _asr_client().transcribe,
+            attempts=3,
+            base_delay=1.0,
+            what="ASR",
+            on_retry=lambda n: placeholder.edit_text(f"🎧 识别重试中…({n + 1}/3)"),
+            audio_url=url,
+        )
         logger.info("ASR 结果: %s", transcript)
         if not transcript:
             await placeholder.edit_text("（没识别到语音内容）")
@@ -77,7 +125,7 @@ async def on_voice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
         if config.POLISH_ENABLED:
             logger.info("DeepSeek 整理中…")
-            text = await asyncio.to_thread(deepseek_client.polish, transcript)
+            text = await _polish(transcript)
             logger.info("DeepSeek 结果: %s", text)
         else:
             text = transcript
