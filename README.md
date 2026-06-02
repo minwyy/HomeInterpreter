@@ -65,11 +65,12 @@ app/
 - **透明性**:Telegram 技术上允许你这么做,但群成员看得见 bot 在场。监听并转写他人语音,最好在群里说明一下。
 - **上海话精度**:国际区是 `fun-asr`,吴语自动识别。不理想的话可换北京区 Key + 改 `DASHSCOPE_HTTP_URL`,代码不动。
 
-## 路线图(Roadmap)
-1. **DeepSeek 一天对话记忆**:给整理步骤加上短期上下文,按群(或按人)保留最近一天的转写,过期自动清掉,让整理结果能参考前文、用词更连贯。
-2. **整理文字前标注发言人**:在每条结果前加上发言人姓名(如 `张三:…`),群里多人说话时一眼看清谁说的。
-3. **简单 agent 功能**:让 bot 听懂几条简单指令并响应——`retry`(重新识别/整理上一条)、`summary`(对最近对话出摘要)、`interpret in english`(把内容翻成英文)。
-4. **地名替换成英文**:整理时把文字里的地名换成英文写法(如「上海」→ Shanghai),方便非中文读者。
+## Roadmap
+1. **One-day DeepSeek memory** — give the polish step short-term context: keep the last ~24h of transcripts per group (or per person), auto-expire older ones, so results can reference earlier messages and stay consistent in wording.
+2. **Speaker name before the text** — prefix each result with the speaker's name (e.g. `张三: …`) so it's clear who said what when multiple people talk.
+3. **Simple agent features** — let the bot understand a few simple commands and react: `retry` (re-transcribe/re-polish the last message), `summary` (summarize the recent conversation), `interpret in english` (translate the content to English).
+4. ✅ **Use proper English place names in English output** *(done)* — English place names spoken in the audio (e.g. Ashfield) are recognized as English via Fun-ASR custom hotwords instead of being transliterated to Chinese. See `app/manage_vocab.py` and `FUNASR_HOTWORDS`.
+5. **Hotword source / management** — place-name hotwords currently live in `FUNASR_HOTWORDS` in `.env` and are pushed manually via `manage_vocab.py`. Add a better source: maintain the list in a file (or DB), or let users add words via a bot command, so hotwords can be updated without editing env vars and redeploying.
 
 ## 后续可做
 - 去重(同一 file_id 不重复识别)、把转写写进数据库做整群纪要。

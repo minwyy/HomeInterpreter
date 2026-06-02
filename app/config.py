@@ -30,6 +30,15 @@ DASHSCOPE_HTTP_URL = os.getenv(
 )
 FUNASR_MODEL = os.getenv("FUNASR_MODEL", "fun-asr")
 
+# 自定义热词(vocabulary)：让 ASR 把指定词识别成原样，比如英文地名 Ashfield。
+# FUNASR_VOCABULARY_ID 由 manage_vocab.py 创建后回填到这里(运行时用)。
+FUNASR_VOCABULARY_ID = os.getenv("FUNASR_VOCABULARY_ID", "")
+# 热词前缀(只能小写字母/数字，<=10 字符)，仅 manage_vocab.py 建表时用。
+FUNASR_VOCABULARY_PREFIX = os.getenv("FUNASR_VOCABULARY_PREFIX", "places")
+# 要强制识别的词，逗号分隔；默认按英文地名处理(lang=en)。仅 manage_vocab.py 用。
+_hot = os.getenv("FUNASR_HOTWORDS", "").strip()
+FUNASR_HOTWORDS = [w.strip() for w in _hot.split(",") if w.strip()]
+
 # DeepSeek（把上海话转写整理成规范中文；可关）
 POLISH_ENABLED = os.getenv("POLISH_ENABLED", "true").lower() == "true"
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "")

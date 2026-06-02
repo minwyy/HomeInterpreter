@@ -41,10 +41,14 @@ class BailianFunASR(ASRProvider):
         from http import HTTPStatus
         from dashscope.audio.asr import Transcription
 
+        kwargs = {}
+        if config.FUNASR_VOCABULARY_ID:
+            kwargs["vocabulary_id"] = config.FUNASR_VOCABULARY_ID  # 自定义热词，固定英文地名等
         task = Transcription.async_call(
             model=self._model,
             file_urls=[audio_url],
-            language_hints=["zh"],  # 偏中文(含吴语/上海话)；想自动检测可去掉
+            language_hints=["zh", "en"],  # 中文(含吴语/上海话)+英文，识别夹带的英文地名等
+            **kwargs,
         )
         resp = Transcription.wait(task=task)
         if resp.status_code != HTTPStatus.OK:
