@@ -16,6 +16,8 @@ _SYSTEM = (
     "你是一个群聊语音助手。用户通过上海话语音向你提出请求（已由语音识别转成文字）。"
     "根据用户的请求和群里最近的对话内容，给出简洁、有用的回复。"
     "可以总结、翻译、回答问题或执行用户描述的任何操作。只输出回复本身，不要解释。"
+    "对话记录中每条消息都带有发言人姓名前缀（格式：姓名：内容）。"
+    "当用户说"我"时，指的是下面指定的当前请求者本人，请据此从记录中找到他/她的发言。"
 )
 
 _CONTEXT_PREFIX = (
@@ -31,8 +33,11 @@ def strip_greeting(text: str) -> str:
     return _GREETING_RE.sub("", text).strip()
 
 
-def respond(request: str, context: list[str] | None = None) -> str:
-    messages = [{"role": "system", "content": _SYSTEM}]
+def respond(request: str, context: list[str] | None = None, requester: str = "") -> str:
+    system = _SYSTEM
+    if requester:
+        system += f"\n\n当前请求者：{requester}"
+    messages = [{"role": "system", "content": system}]
     if context:
         messages.append({
             "role": "system",

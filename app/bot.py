@@ -140,7 +140,7 @@ async def on_voice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
                 if config.MEMORY_ENABLED
                 else []
             )
-            reply = await asyncio.to_thread(agent.respond, request, memory_context)
+            reply = await asyncio.to_thread(agent.respond, request, memory_context, _speaker(msg))
             await placeholder.edit_text(f"🤖 {reply}")
             return
 
