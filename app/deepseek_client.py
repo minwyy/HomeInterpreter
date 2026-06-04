@@ -12,16 +12,24 @@ _SYSTEM = (
     "只输出整理后的文字，不要解释、不要加引号。"
 )
 
+_CONTEXT_PREFIX = (
+    "以下是该群最近的对话内容（已整理，按时间先后排列），仅供参考，帮助你保持人名、"
+    "地名、专有名词和用词的一致；不要把这些内容混进本次输出。\n\n"
+)
 
-def polish(transcript: str) -> str:
+
+def polish(transcript: str, context: list[str] | None = None) -> str:
     if not transcript:
         return ""
+    messages = [{"role": "system", "content": _SYSTEM}]
+    if context:
+        messages.append(
+            {"role": "system", "content": _CONTEXT_PREFIX + "\n".join(context)}
+        )
+    messages.append({"role": "user", "content": transcript})
     resp = _client.chat.completions.create(
         model=config.DEEPSEEK_MODEL,
-        messages=[
-            {"role": "system", "content": _SYSTEM},
-            {"role": "user", "content": transcript},
-        ],
+        messages=messages,
         temperature=0.3,
         max_tokens=600,
     )
