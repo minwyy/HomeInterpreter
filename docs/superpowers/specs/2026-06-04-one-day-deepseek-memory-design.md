@@ -12,6 +12,11 @@ so polished results reference earlier messages and stay consistent in wording
 - **What's stored / fed back:** the *polished* result of each voice message,
   plus *plain text messages* people type in the group. Both feed the polish
   step. The bot's own replies and slash-commands are never stored.
+- **Speaker tagging:** each stored line records who spoke (sender's display
+  name), and the DeepSeek context block prefixes each line with it
+  (`张三：…`). This helps pronoun/context resolution and sets up roadmap #2.
+  It only affects the *context* fed to DeepSeek — the bot's reply is **not**
+  prefixed (that output-side change stays in roadmap #2).
 - **Window:** sliding 24h **AND** at most the last 50 messages per chat.
 - **Per-message char cap:** each stored text is trimmed to 1000 chars so a
   single long paste can't dominate the prompt.
@@ -30,6 +35,7 @@ CREATE TABLE IF NOT EXISTS memory (
     id      INTEGER PRIMARY KEY AUTOINCREMENT,
     chat_id INTEGER NOT NULL,
     ts      REAL    NOT NULL,   -- epoch seconds, from msg.date
+    speaker TEXT    NOT NULL,   -- sender display name ('' if unknown)
     text    TEXT    NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_memory_chat_ts ON memory(chat_id, ts);
@@ -41,11 +47,14 @@ threads — no shared connection object). Schema is created at startup.
 ### Public interface (`app/memory.py`)
 
 - `init() -> None` — create table + index if missing. Called once at startup.
-- `add(chat_id: int, text: str, *, ts: float) -> None` — trim `text` to
-  `MEMORY_MAX_CHARS`, skip if empty after trim, insert one row.
-- `recent(chat_id: int) -> list[str]` — return prior texts for the chat,
+- `add(chat_id: int, text: str, *, ts: float, speaker: str = "") -> None` —
+  trim `text` to `MEMORY_MAX_CHARS`, skip if empty after trim, insert one row
+  with `speaker`.
+- `recent(chat_id: int) -> list[str]` — return prior lines for the chat,
   **oldest → newest**, within `MEMORY_WINDOW_HOURS`, capped at the most recent
-  `MEMORY_MAX_MESSAGES`. Prunes expired rows for that chat as a side effect.
+  `MEMORY_MAX_MESSAGES`. Each line is formatted `f"{speaker}：{text}"` when a
+  speaker is known, else just `text`. Prunes expired rows for that chat as a
+  side effect.
 
 All three are best-effort: exceptions are caught and logged inside the module,
 returning a safe default (`recent` → `[]`, `add`/`init` → no-op). Memory can
@@ -55,16 +64,19 @@ never break transcription.
 
 Only active when `config.POLISH_ENABLED and config.MEMORY_ENABLED`.
 
+A small helper `_speaker(msg) -> str` derives the sender's display name from
+`msg.from_user` — `full_name` if present, else `username`, else `""`.
+
 **Voice / audio message (`on_voice`)** — unchanged up to the polish step:
 1. ASR → `transcript`.
 2. `context = await asyncio.to_thread(memory.recent, chat.id)`.
 3. `text = await _polish(transcript, context)`.
 4. After the reply text is finalized:
-   `await asyncio.to_thread(memory.add, chat.id, text, ts=msg.date.timestamp())`.
+   `await asyncio.to_thread(memory.add, chat.id, text, ts=msg.date.timestamp(), speaker=_speaker(msg))`.
 
 **Text message (new `on_text` handler)** — `filters.TEXT & ~filters.COMMAND`:
 1. Respect `_allowed(chat.id)`; return early if memory/polish disabled.
-2. `await asyncio.to_thread(memory.add, chat.id, msg.text, ts=msg.date.timestamp())`.
+2. `await asyncio.to_thread(memory.add, chat.id, msg.text, ts=msg.date.timestamp(), speaker=_speaker(msg))`.
 3. No reply.
 
 Handler registration in `main()`:
@@ -86,6 +98,7 @@ prompt stays; we add a second system message:
 >
 > {chronological lines joined by "\n"}
 
+Each line already carries its speaker prefix (`张三：…`) from `memory.recent`.
 The new transcript remains the sole user message. When `context` is empty or
 `None`, behaviour is identical to today.
 
@@ -123,6 +136,8 @@ No test framework exists yet — add `pytest` to `requirements.txt`.
 - Only the most recent `MEMORY_MAX_MESSAGES` are returned when more exist.
 - Per-chat isolation: chat A never sees chat B's messages.
 - Text longer than `MEMORY_MAX_CHARS` is trimmed; empty/whitespace skipped.
+- A line stored with a `speaker` comes back prefixed `f"{speaker}：{text}"`;
+  with no speaker it comes back as bare `text`.
 - `recent` on a DB error returns `[]` (no raise).
 
 `tests/test_deepseek_polish.py` (stubbed OpenAI client):
@@ -132,6 +147,7 @@ No test framework exists yet — add `pytest` to `requirements.txt`.
 
 ## Out of scope
 
-- Speaker labelling in stored lines / output (roadmap #2).
+- Prefixing the **bot's reply** with the speaker name (roadmap #2). This spec
+  only tags speakers in the context fed to DeepSeek, not in the output.
 - Summaries or agent commands (roadmap #3).
 - De-duplication of repeated `file_id`s.
