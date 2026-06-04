@@ -46,3 +46,22 @@ def test_caps_at_max_messages(memdb, monkeypatch):
         memory.add(1, f"m{i}", ts=now - (5 - i))  # m0 最旧 … m4 最新
     # 只保留最近 3 条，按时间顺序返回
     assert memory.recent(1) == ["m2", "m3", "m4"]
+
+
+def test_trims_long_text(memdb, monkeypatch):
+    monkeypatch.setattr(memdb, "MEMORY_MAX_CHARS", 10)
+    memory.add(1, "x" * 50, ts=time.time())
+    assert memory.recent(1) == ["x" * 10]
+
+
+def test_skips_empty_text(memdb):
+    memory.add(1, "   ", ts=time.time())
+    memory.add(1, "", ts=time.time())
+    assert memory.recent(1) == []
+
+
+def test_speaker_prefix_when_present(memdb):
+    now = time.time()
+    memory.add(1, "你好", ts=now - 1, speaker="张三")
+    memory.add(1, "无名", ts=now)  # 无 speaker
+    assert memory.recent(1) == ["张三：你好", "无名"]

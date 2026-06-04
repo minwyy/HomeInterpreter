@@ -36,6 +36,9 @@ def init() -> None:
 
 
 def add(chat_id: int, text: str, *, ts: float, speaker: str = "") -> None:
+    text = (text or "").strip()[: config.MEMORY_MAX_CHARS]
+    if not text:
+        return  # 空消息不存
     conn = _connect()
     with conn:
         conn.execute(
@@ -57,4 +60,4 @@ def recent(chat_id: int) -> list[str]:
         ).fetchall()
     conn.close()
     rows.reverse()  # 取最近 N 条后，倒回成 旧→新
-    return [r[1] for r in rows]
+    return [f"{sp}：{tx}" if sp else tx for sp, tx in rows]
