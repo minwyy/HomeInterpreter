@@ -53,7 +53,7 @@ threads — no shared connection object). Schema is created at startup.
 - `recent(chat_id: int) -> list[str]` — return prior lines for the chat,
   **oldest → newest**, within `MEMORY_WINDOW_HOURS`, capped at the most recent
   `MEMORY_MAX_MESSAGES`. Each line is formatted `f"{speaker}：{text}"` when a
-  speaker is known, else just `text`. Prunes expired rows for that chat as a
+  speaker is known, else just `text`. Prunes expired rows (all chats) as a
   side effect.
 
 All three are best-effort: exceptions are caught and logged inside the module,
