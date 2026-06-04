@@ -19,7 +19,7 @@ from telegram.ext import (
     ContextTypes,
 )
 
-from . import config, asr, deepseek_client
+from . import config, asr, deepseek_client, memory
 
 logging.basicConfig(
     format="%(asctime)s %(levelname)s %(name)s: %(message)s", level=logging.INFO
@@ -38,6 +38,14 @@ def _asr_client():
 
 def _allowed(chat_id: int) -> bool:
     return not config.ALLOWED_CHAT_IDS or chat_id in config.ALLOWED_CHAT_IDS
+
+
+def _speaker(msg) -> str:
+    """取发送者显示名：优先 full_name，退而 username，再退空串。"""
+    u = getattr(msg, "from_user", None)
+    if not u:
+        return ""
+    return u.full_name or u.username or ""
 
 
 async def _retry(fn, *, attempts, base_delay, what, on_retry=None, **kwargs):
@@ -62,11 +70,11 @@ async def _retry(fn, *, attempts, base_delay, what, on_retry=None, **kwargs):
             await asyncio.sleep(delay)
 
 
-async def _polish(transcript: str) -> str:
+async def _polish(transcript: str, context: list[str] | None = None) -> str:
     """整理转写文字：空结果或出错时重试一次；最终仍失败/为空则回退到原始转写。"""
     for attempt in range(2):  # 初次 + 1 次重试
         try:
-            text = await asyncio.to_thread(deepseek_client.polish, transcript)
+            text = await asyncio.to_thread(deepseek_client.polish, transcript, context)
         except Exception as e:  # noqa: BLE001
             logger.warning("DeepSeek 第%d次失败: %s", attempt + 1, e)
             text = ""
@@ -124,13 +132,23 @@ async def on_voice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             return
 
         if config.POLISH_ENABLED:
-            logger.info("DeepSeek 整理中…")
-            text = await _polish(transcript)
+            context = (
+                await asyncio.to_thread(memory.recent, chat.id)
+                if config.MEMORY_ENABLED
+                else []
+            )
+            logger.info("DeepSeek 整理中…（上下文 %d 条）", len(context))
+            text = await _polish(transcript, context)
             logger.info("DeepSeek 结果: %s", text)
         else:
             text = transcript
 
         await placeholder.edit_text(f"🎙 {text}")
+
+        if config.POLISH_ENABLED and config.MEMORY_ENABLED:
+            await asyncio.to_thread(
+                memory.add, chat.id, text, ts=msg.date.timestamp(), speaker=_speaker(msg)
+            )
     except Exception as e:  # noqa: BLE001
         logger.exception("处理语音失败")
         try:
@@ -139,10 +157,25 @@ async def on_voice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             logger.exception("连失败提示都没发出去")
 
 
+async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """把群里的文字消息也记进一天记忆，供后续整理时当上下文；不回复。"""
+    if not (config.POLISH_ENABLED and config.MEMORY_ENABLED):
+        return
+    msg = update.effective_message
+    chat = update.effective_chat
+    if not _allowed(chat.id) or not msg or not msg.text:
+        return
+    await asyncio.to_thread(
+        memory.add, chat.id, msg.text, ts=msg.date.timestamp(), speaker=_speaker(msg)
+    )
+
+
 def main() -> None:
+    memory.init()
     app = ApplicationBuilder().token(config.TELEGRAM_BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", on_start))
     app.add_handler(MessageHandler(filters.VOICE | filters.AUDIO, on_voice))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, on_text))
     logger.info("bot 启动，长轮询中…")
     app.run_polling(allowed_updates=Update.ALL_TYPES)
 
