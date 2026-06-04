@@ -7,6 +7,7 @@ config 全部在调用时读取，方便测试 monkeypatch。
 import logging
 import sqlite3
 import time
+from contextlib import closing
 
 from . import config
 
@@ -32,32 +33,39 @@ def _connect() -> sqlite3.Connection:
 
 def init() -> None:
     """启动时建表。失败只记日志(best-effort)。"""
-    _connect().close()
+    try:
+        with closing(_connect()):
+            pass
+    except Exception:  # noqa: BLE001
+        logger.exception("memory.init 失败")
 
 
 def add(chat_id: int, text: str, *, ts: float, speaker: str = "") -> None:
     text = (text or "").strip()[: config.MEMORY_MAX_CHARS]
     if not text:
         return  # 空消息不存
-    conn = _connect()
-    with conn:
-        conn.execute(
-            "INSERT INTO memory (chat_id, ts, speaker, text) VALUES (?, ?, ?, ?)",
-            (chat_id, ts, speaker or "", text),
-        )
-    conn.close()
+    try:
+        with closing(_connect()) as conn, conn:
+            conn.execute(
+                "INSERT INTO memory (chat_id, ts, speaker, text) VALUES (?, ?, ?, ?)",
+                (chat_id, ts, speaker or "", text),
+            )
+    except Exception:  # noqa: BLE001
+        logger.exception("memory.add 失败")
 
 
 def recent(chat_id: int) -> list[str]:
     cutoff = time.time() - config.MEMORY_WINDOW_HOURS * 3600
-    conn = _connect()
-    with conn:
-        conn.execute("DELETE FROM memory WHERE ts < ?", (cutoff,))  # 顺手清过期
-        rows = conn.execute(
-            "SELECT speaker, text FROM memory WHERE chat_id = ? AND ts >= ? "
-            "ORDER BY ts DESC, id DESC LIMIT ?",
-            (chat_id, cutoff, config.MEMORY_MAX_MESSAGES),
-        ).fetchall()
-    conn.close()
+    try:
+        with closing(_connect()) as conn, conn:
+            conn.execute("DELETE FROM memory WHERE ts < ?", (cutoff,))  # 顺手清过期
+            rows = conn.execute(
+                "SELECT speaker, text FROM memory WHERE chat_id = ? AND ts >= ? "
+                "ORDER BY ts DESC, id DESC LIMIT ?",
+                (chat_id, cutoff, config.MEMORY_MAX_MESSAGES),
+            ).fetchall()
+    except Exception:  # noqa: BLE001
+        logger.exception("memory.recent 失败")
+        return []
     rows.reverse()  # 取最近 N 条后，倒回成 旧→新
     return [f"{sp}：{tx}" if sp else tx for sp, tx in rows]

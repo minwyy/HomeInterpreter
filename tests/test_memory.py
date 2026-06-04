@@ -1,3 +1,4 @@
+import sqlite3
 import time
 
 from app import memory
@@ -31,8 +32,6 @@ def test_recent_prunes_expired_rows(memdb):
     memory.add(1, "stale", ts=now - 25 * 3600)
     memory.recent(1)  # 触发清理
     # 直接查库确认旧行已被删除
-    import sqlite3
-
     conn = sqlite3.connect(memdb.DB_PATH)
     count = conn.execute("SELECT COUNT(*) FROM memory").fetchone()[0]
     conn.close()
@@ -65,3 +64,14 @@ def test_speaker_prefix_when_present(memdb):
     memory.add(1, "你好", ts=now - 1, speaker="张三")
     memory.add(1, "无名", ts=now)  # 无 speaker
     assert memory.recent(1) == ["张三：你好", "无名"]
+
+
+def test_recent_returns_empty_on_db_error(memdb, monkeypatch):
+    # 指向一个不存在的目录，sqlite3.connect 会报 "unable to open database file"
+    monkeypatch.setattr(memdb, "DB_PATH", "/nonexistent-dir/does/not/exist.db")
+    assert memory.recent(1) == []
+
+
+def test_add_does_not_raise_on_db_error(memdb, monkeypatch):
+    monkeypatch.setattr(memdb, "DB_PATH", "/nonexistent-dir/does/not/exist.db")
+    memory.add(1, "hi", ts=time.time())  # 不应抛异常
