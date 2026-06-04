@@ -132,13 +132,13 @@ async def on_voice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             return
 
         if config.POLISH_ENABLED:
-            context = (
+            memory_context = (
                 await asyncio.to_thread(memory.recent, chat.id)
                 if config.MEMORY_ENABLED
                 else []
             )
-            logger.info("DeepSeek 整理中…（上下文 %d 条）", len(context))
-            text = await _polish(transcript, context)
+            logger.info("DeepSeek 整理中…（上下文 %d 条）", len(memory_context))
+            text = await _polish(transcript, memory_context)
             logger.info("DeepSeek 结果: %s", text)
         else:
             text = transcript
