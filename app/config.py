@@ -48,6 +48,13 @@ DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "")
 DEEPSEEK_MODEL = os.getenv("DEEPSEEK_MODEL", "deepseek-chat")
 DEEPSEEK_BASE_URL = "https://api.deepseek.com"
 
+# 一天记忆(roadmap #1)：把群里最近消息当上下文喂给 DeepSeek，保持人名/地名/用词一致。
+# 只在 POLISH_ENABLED=true 时才有意义。
+MEMORY_ENABLED = os.getenv("MEMORY_ENABLED", "true").lower() == "true"
+MEMORY_WINDOW_HOURS = float(os.getenv("MEMORY_WINDOW_HOURS", "24"))
+MEMORY_MAX_MESSAGES = int(os.getenv("MEMORY_MAX_MESSAGES", "50"))
+MEMORY_MAX_CHARS = int(os.getenv("MEMORY_MAX_CHARS", "1000"))
+
 if ASR_PROVIDER == "bailian" and not DASHSCOPE_API_KEY:
     raise RuntimeError("缺少 DASHSCOPE_API_KEY（新加坡区域的 Key）")
 if POLISH_ENABLED and not DEEPSEEK_API_KEY:
