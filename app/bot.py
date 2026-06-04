@@ -172,16 +172,27 @@ async def on_voice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 
 async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """把群里的文字消息也记进一天记忆，供后续整理时当上下文；不回复。"""
-    if not (config.POLISH_ENABLED and config.MEMORY_ENABLED):
-        return
     msg = update.effective_message
     chat = update.effective_chat
     if not _allowed(chat.id) or not msg or not msg.text:
         return
-    await asyncio.to_thread(
-        memory.add, chat.id, msg.text, ts=msg.date.timestamp(), speaker=_speaker(msg)
-    )
+
+    if agent.is_agent_trigger(msg.text):
+        request = agent.strip_greeting(msg.text)
+        logger.info("Agent 请求(文字): %r", request)
+        memory_context = (
+            await asyncio.to_thread(memory.recent, chat.id)
+            if config.MEMORY_ENABLED
+            else []
+        )
+        reply = await asyncio.to_thread(agent.respond, request, memory_context, _speaker(msg))
+        await msg.reply_text(f"🤖 {reply}", reply_to_message_id=msg.message_id)
+        return
+
+    if config.POLISH_ENABLED and config.MEMORY_ENABLED:
+        await asyncio.to_thread(
+            memory.add, chat.id, msg.text, ts=msg.date.timestamp(), speaker=_speaker(msg)
+        )
 
 
 def main() -> None:
