@@ -77,7 +77,7 @@ app/
 ## Roadmap
 1. ✅ **One-day DeepSeek memory** *(done)* — the polish step gets per-group short-term context: the last 24h of group messages (typed text + polished voice transcripts, tagged by speaker, capped at 50 / 1000 chars each) are stored in SQLite at `DB_PATH` and fed to DeepSeek so results reference earlier messages and stay consistent in wording. Tune via `MEMORY_*` env vars. See `app/memory.py`.
 2. **Speaker name before the text** — prefix each result with the speaker's name (e.g. `张三: …`) so it's clear who said what when multiple people talk.
-3. **Simple agent features** — let the bot understand a few simple commands and react: `retry` (re-transcribe/re-polish the last message), `summary` (summarize the recent conversation), `interpret in english` (translate the content to English). Set agent trigger words (e.g., "再讲"，"问问看", "帮帮忙" )
+3. ✅ **Free-form voice agent** *(done)* — voice messages starting with `你好` or `侬好` are routed to DeepSeek as free-form requests instead of being polished. DeepSeek decides what to do (summarise, translate, answer questions, etc.) using the recent group conversation as context. See `app/agent.py`.
 4. ✅ **Use proper English place names in English output** *(done)* — English place names spoken in the audio (e.g. Ashfield) are recognized as English via Fun-ASR custom hotwords instead of being transliterated to Chinese. See `app/manage_vocab.py` and `FUNASR_HOTWORDS`.
 5. **Hotword source / management** — place-name hotwords currently live in `FUNASR_HOTWORDS` in `.env` and are pushed manually via `manage_vocab.py`. Add a better source: maintain the list in a file (or DB), or let users add words via a bot command, so hotwords can be updated without editing env vars and redeploying.
 

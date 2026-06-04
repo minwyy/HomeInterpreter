@@ -19,7 +19,7 @@ from telegram.ext import (
     ContextTypes,
 )
 
-from . import config, asr, deepseek_client, memory
+from . import config, asr, deepseek_client, memory, agent
 
 logging.basicConfig(
     format="%(asctime)s %(levelname)s %(name)s: %(message)s", level=logging.INFO
@@ -131,6 +131,20 @@ async def on_voice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             await placeholder.edit_text("（没识别到语音内容）")
             return
 
+        # Agent mode: voice starts with 你好 / 侬好 → let DeepSeek handle freely.
+        if agent.is_agent_trigger(transcript):
+            request = agent.strip_greeting(transcript)
+            logger.info("Agent 请求: %r", request)
+            memory_context = (
+                await asyncio.to_thread(memory.recent, chat.id)
+                if config.MEMORY_ENABLED
+                else []
+            )
+            reply = await asyncio.to_thread(agent.respond, request, memory_context)
+            await placeholder.edit_text(f"🤖 {reply}")
+            return
+
+        # Normal flow: polish and store in memory.
         if config.POLISH_ENABLED:
             memory_context = (
                 await asyncio.to_thread(memory.recent, chat.id)
