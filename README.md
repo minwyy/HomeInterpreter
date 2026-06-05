@@ -65,7 +65,9 @@ app/
 ├── config.py          从环境变量读配置
 ├── asr.py             可插拔 ASR，默认 Fun-ASR 非实时（吴语/上海话），按 URL 识别
 ├── deepseek_client.py 把转写整理成规范中文
-└── memory.py          一天记忆：SQLite 存近 24h 群消息，喂给 DeepSeek 当上下文
+├── memory.py          一天记忆：SQLite 存近 24h 群消息，喂给 DeepSeek 当上下文
+├── agent.py           你好/侬好 触发：函数调用循环，让 DeepSeek 自主用工具回答
+└── weather.py         WeatherAPI.com 天气工具（agent 的第一个工具）
 ```
 
 ## 注意
@@ -76,12 +78,14 @@ app/
 
 ## Roadmap
 1. ✅ **One-day DeepSeek memory** *(done)* — the polish step gets per-group short-term context: the last 24h of group messages (typed text + polished voice transcripts, tagged by speaker, capped at 50 / 1000 chars each) are stored in SQLite at `DB_PATH` and fed to DeepSeek so results reference earlier messages and stay consistent in wording. Tune via `MEMORY_*` env vars. See `app/memory.py`.
-2. **Speaker name before the text** — prefix each result with the speaker's name (e.g. `张三: …`) so it's clear who said what when multiple people talk.
+<!-- 2. **Speaker name before the text** — prefix each result with the speaker's name (e.g. `张三: …`) so it's clear who said what when multiple people talk. -->
 3. ✅ **Free-form voice agent** *(done)* — voice messages starting with `你好` or `侬好` are routed to DeepSeek as free-form requests instead of being polished. DeepSeek decides what to do (summarise, translate, answer questions, etc.) using the recent group conversation as context. See `app/agent.py`.
 4. ✅ **Use proper English place names in English output** *(done)* — English place names spoken in the audio (e.g. Ashfield) are recognized as English via Fun-ASR custom hotwords instead of being transliterated to Chinese. See `app/manage_vocab.py` and `FUNASR_HOTWORDS`.
 5. **Hotword source / management** — place-name hotwords currently live in `FUNASR_HOTWORDS` in `.env` and are pushed manually via `manage_vocab.py`. Add a better source: maintain the list in a file (or DB), or let users add words via a bot command, so hotwords can be updated without editing env vars and redeploying.
+6. ✅ **Function-calling loop** *(done)* — the agent (`app/agent.py`) runs a 🔁 tool-calling loop: each round it offers DeepSeek the tool schemas, runs any tool calls it makes, feeds the results back, and loops until DeepSeek returns a plain answer (capped at 4 rounds). First tool is `get_weather` (WeatherAPI.com, `app/weather.py`) — ask things like "你好，明天 Homebush 会下雨吗" and it fetches the real forecast. Set `WEATHERAPI_KEY` / `WEATHER_DEFAULT_LOCATION`.
+7. **Second Interprete tool** allow user to call qwen-asr if being requested to interprete it again. Later request will return same result without calling asr. 
 
 ## 后续可做
 - 去重(同一 file_id 不重复识别)、把转写写进数据库做整群纪要。
-- 多条语音合并成一段会话上下文,喂 DeepSeek 出"群聊摘要"而非逐条转写。
+<!-- - 多条语音合并成一段会话上下文,喂 DeepSeek 出"群聊摘要"而非逐条转写。 -->
 - 一天记忆(roadmap #1)已落地：SQLite 写在 `DB_PATH`(容器里挂 `/data` named volume)。热词目前在 `.env` 的 `FUNASR_HOTWORDS`(经 `manage_vocab.py` 推到阿里云,不在本地 state);#5 才考虑搬到文件/DB。

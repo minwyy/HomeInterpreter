@@ -55,6 +55,10 @@ MEMORY_WINDOW_HOURS = float(os.getenv("MEMORY_WINDOW_HOURS", "24"))
 MEMORY_MAX_MESSAGES = int(os.getenv("MEMORY_MAX_MESSAGES", "50"))
 MEMORY_MAX_CHARS = int(os.getenv("MEMORY_MAX_CHARS", "1000"))
 
+# WeatherAPI.com（roadmap #6，agent 函数调用循环里的天气工具；不配就降级提示）。
+WEATHERAPI_KEY = os.getenv("WEATHERAPI_KEY", "")
+WEATHER_DEFAULT_LOCATION = os.getenv("WEATHER_DEFAULT_LOCATION", "Homebush, Sydney")
+
 if ASR_PROVIDER == "bailian" and not DASHSCOPE_API_KEY:
     raise RuntimeError("缺少 DASHSCOPE_API_KEY（新加坡区域的 Key）")
 if POLISH_ENABLED and not DEEPSEEK_API_KEY:
