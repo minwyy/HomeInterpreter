@@ -33,6 +33,14 @@ DASHSCOPE_HTTP_URL = os.getenv(
 )
 FUNASR_MODEL = os.getenv("FUNASR_MODEL", "fun-asr")
 
+# 阿里云百炼 Qwen3-ASR（ASR_PROVIDER=qwen 时启用，与 Fun-ASR 共用 DASHSCOPE_API_KEY）。
+# 与 Fun-ASR 不同：走 MultiModalConversation 接口，单次最长约 3 分钟/10MB，超过自动切片。
+QWEN_ASR_MODEL = os.getenv("QWEN_ASR_MODEL", "qwen3-asr-flash")
+# 语种：留空=自动多语种检测；也可填 "zh"/"en" 等强制单语种。
+QWEN_ASR_LANGUAGE = os.getenv("QWEN_ASR_LANGUAGE", "")
+# 单片最长秒数；留足余量(<180s 的接口上限)以防边界。超过就用 ffmpeg 切片后逐片识别。
+QWEN_ASR_MAX_CHUNK_SECONDS = float(os.getenv("QWEN_ASR_MAX_CHUNK_SECONDS", "170"))
+
 # 自定义热词(vocabulary)：让 ASR 把指定词识别成原样，比如英文地名 Ashfield。
 # FUNASR_VOCABULARY_ID 由 manage_vocab.py 创建后回填到这里(运行时用)。
 FUNASR_VOCABULARY_ID = os.getenv("FUNASR_VOCABULARY_ID", "")
@@ -67,7 +75,7 @@ NSW_TRANSPORT_API_KEY = os.getenv("NSW_TRANSPORT_API_KEY", "")
 NSW_TRANSPORT_DEFAULT_STOP = os.getenv("NSW_TRANSPORT_DEFAULT_STOP", "10118084")
 NSW_TRANSPORT_DEFAULT_ROUTE = os.getenv("NSW_TRANSPORT_DEFAULT_ROUTE", "526")
 
-if ASR_PROVIDER == "bailian" and not DASHSCOPE_API_KEY:
+if ASR_PROVIDER in ("bailian", "qwen") and not DASHSCOPE_API_KEY:
     raise RuntimeError("缺少 DASHSCOPE_API_KEY（新加坡区域的 Key）")
 if POLISH_ENABLED and not DEEPSEEK_API_KEY:
     raise RuntimeError(

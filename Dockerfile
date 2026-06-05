@@ -7,6 +7,11 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
+# ffmpeg：Qwen3-ASR(ASR_PROVIDER=qwen) 切长音频时用到 ffmpeg/ffprobe
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
+
 # 先装依赖，利用层缓存
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
