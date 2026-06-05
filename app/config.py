@@ -65,7 +65,7 @@ MEMORY_MAX_CHARS = int(os.getenv("MEMORY_MAX_CHARS", "1000"))
 
 # WeatherAPI.com（roadmap #6，agent 函数调用循环里的天气工具；不配就降级提示）。
 WEATHERAPI_KEY = os.getenv("WEATHERAPI_KEY", "")
-WEATHER_DEFAULT_LOCATION = os.getenv("WEATHER_DEFAULT_LOCATION", "Homebush, Sydney")
+WEATHER_DEFAULT_LOCATION = os.getenv("WEATHER_DEFAULT_LOCATION", "Homebush NSW 2140")
 
 # NSW Transport Open Data（roadmap #7，实时公交班次工具；不配就降级提示）。
 # 在 https://opendata.transport.nsw.gov.au/ 注册应用拿 key（开通 Trip Planner APIs）。

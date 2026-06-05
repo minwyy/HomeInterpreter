@@ -54,7 +54,7 @@ _TOOLS = [
                         "type": "string",
                         "description": (
                             "地点名称，可用中文或英文，例如 'Homebush'、'Sydney'、'悉尼'。"
-                            "用户没指定地点时用 'Homebush, Sydney'。"
+                            "用户没指定地点时留空，用默认地点。"
                         ),
                     },
                     "days": {
@@ -62,7 +62,7 @@ _TOOLS = [
                         "description": "需要预报的天数，1~3，默认 1（只看今天）。",
                     },
                 },
-                "required": ["location"],
+                "required": [],
             },
         },
     },
