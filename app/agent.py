@@ -182,6 +182,7 @@ def respond(request: str, context: list[str] | None = None, requester: str = "")
         for tc in msg.tool_calls:
             logger.info("调用工具 %s(%s)", tc.function.name, tc.function.arguments)
             result = _run_tool(tc.function.name, tc.function.arguments)
+            logger.info("工具 %s 返回: %s", tc.function.name, result.replace("\n", " / "))
             messages.append({
                 "role": "tool",
                 "tool_call_id": tc.id,
