@@ -141,7 +141,7 @@ async def on_voice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
                 else []
             )
             reply = await asyncio.to_thread(agent.respond, request, memory_context, _speaker(msg))
-            await placeholder.edit_text(f"🤖 {reply}")
+            await placeholder.edit_text(f"🐤{reply}")
             return
 
         # Normal flow: polish and store in memory.
@@ -186,7 +186,7 @@ async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             else []
         )
         reply = await asyncio.to_thread(agent.respond, request, memory_context, _speaker(msg))
-        await msg.reply_text(f"🤖 {reply}", reply_to_message_id=msg.message_id)
+        await msg.reply_text(f"🐤{reply}", reply_to_message_id=msg.message_id)
         return
 
     if config.POLISH_ENABLED and config.MEMORY_ENABLED:
