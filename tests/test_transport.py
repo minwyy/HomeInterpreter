@@ -92,6 +92,20 @@ def test_route_filter_excludes_other_lines(monkeypatch):
     assert "408" not in out
 
 
+def test_returns_next_two_by_default(monkeypatch):
+    def fake_get(url, **kwargs):
+        return _FakeResp({"stopEvents": [
+            {"transportation": {"number": "526", "destination": {"name": "Strathfield"}},
+             "departureTimePlanned": f"2099-01-01T00:0{i}:00Z"} for i in range(1, 6)
+        ]})
+
+    monkeypatch.setattr(transport.httpx, "get", fake_get)
+    out = transport.get_bus_departures("10118084", route="526")
+
+    # 默认两班：出现两条 526 班次行（不含表头）
+    assert out.count("526 路（开往") == 2
+
+
 def test_no_matching_departures(monkeypatch):
     monkeypatch.setattr(transport.httpx, "get", lambda url, **k: _FakeResp({"stopEvents": []}))
     out = transport.get_bus_departures("10118084", route="526")

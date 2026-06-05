@@ -88,6 +88,10 @@ _TOOLS = [
                         "type": "string",
                         "description": "线路号过滤，例如 '526'。不指定就返回该站所有线路。",
                     },
+                    "count": {
+                        "type": "integer",
+                        "description": "返回最近几班，默认 2（下两班车）。",
+                    },
                 },
                 "required": [],
             },
@@ -103,6 +107,7 @@ _DISPATCH = {
     "get_bus_departures": lambda args: transport.get_bus_departures(
         args.get("stop") or config.NSW_TRANSPORT_DEFAULT_STOP,
         args.get("route") or config.NSW_TRANSPORT_DEFAULT_ROUTE,
+        args.get("count", 2),
     ),
 }
 

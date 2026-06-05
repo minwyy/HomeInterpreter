@@ -78,12 +78,19 @@ def _minutes_until(iso: str) -> int | None:
     return int((dt - datetime.now(timezone.utc)).total_seconds() // 60)
 
 
-def get_bus_departures(stop: str, route: str = "", limit: int = 4) -> str:
-    """查 stop 接下来的离站班次，可按 route 线路号过滤，返回中文摘要字符串。"""
+def get_bus_departures(stop: str, route: str = "", limit: int = 2) -> str:
+    """查 stop 接下来的离站班次，可按 route 线路号过滤，返回中文摘要字符串。
+
+    默认返回最近的两班(limit=2)。
+    """
     if not config.NSW_TRANSPORT_API_KEY:
         return "（未配置 NSW_TRANSPORT_API_KEY，无法查询公交实时班次）"
     stop = (stop or config.NSW_TRANSPORT_DEFAULT_STOP).strip()
     route = (route or "").strip()
+    try:
+        limit = max(1, min(int(limit or 2), 6))
+    except (TypeError, ValueError):
+        limit = 2
 
     stop_id = _resolve_stop_id(stop)
     if not stop_id:
