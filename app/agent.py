@@ -14,7 +14,7 @@ import re
 
 from openai import OpenAI
 
-from . import config, weather
+from . import config, weather, transport
 
 logger = logging.getLogger("agent")
 
@@ -29,8 +29,8 @@ _SYSTEM = (
     "对话记录中每条消息都带有发言人姓名前缀（格式：姓名：内容）。"
     "当用户说'我'时，指的是下面指定的当前请求者本人，请据此从记录中找到他/她的发言。"
     "如果用户要求总结其他人说了什么，只包含非请求者的发言，排除请求者自己的消息。"
-    "需要实时信息（比如天气、气温、会不会下雨、要不要带伞）时，调用提供的工具获取，"
-    "不要凭空编造。"
+    "需要实时信息（比如天气、气温、会不会下雨、要不要带伞、公交几点来、还要等几分钟）时，"
+    "调用提供的工具获取，不要凭空编造。"
 )
 
 _CONTEXT_PREFIX = (
@@ -66,12 +66,43 @@ _TOOLS = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_bus_departures",
+            "description": (
+                "查询某个公交/巴士站点接下来的实时离站班次（NSW Transport 实时数据）。"
+                "当用户问公交/巴士/几号车几点来、还要等几分钟、下一班车等问题时调用。"
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "stop": {
+                        "type": "string",
+                        "description": (
+                            "站点名称或数字 stop id，例如 'Underwood Rd before Powell St' "
+                            "或 '10118084'。用户没指定站点时留空，用默认站点。"
+                        ),
+                    },
+                    "route": {
+                        "type": "string",
+                        "description": "线路号过滤，例如 '526'。不指定就返回该站所有线路。",
+                    },
+                },
+                "required": [],
+            },
+        },
+    },
 ]
 
 _DISPATCH = {
     "get_weather": lambda args: weather.get_weather(
         args.get("location") or config.WEATHER_DEFAULT_LOCATION,
         args.get("days", 1),
+    ),
+    "get_bus_departures": lambda args: transport.get_bus_departures(
+        args.get("stop") or config.NSW_TRANSPORT_DEFAULT_STOP,
+        args.get("route") or config.NSW_TRANSPORT_DEFAULT_ROUTE,
     ),
 }
 

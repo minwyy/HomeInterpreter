@@ -67,7 +67,8 @@ app/
 ├── deepseek_client.py 把转写整理成规范中文
 ├── memory.py          一天记忆：SQLite 存近 24h 群消息，喂给 DeepSeek 当上下文
 ├── agent.py           你好/侬好 触发：函数调用循环，让 DeepSeek 自主用工具回答
-└── weather.py         WeatherAPI.com 天气工具（agent 的第一个工具）
+├── weather.py         WeatherAPI.com 天气工具（agent 的第一个工具）
+└── transport.py       NSW Transport 实时公交班次工具（agent 的第二个工具）
 ```
 
 ## 注意
@@ -83,7 +84,7 @@ app/
 4. ✅ **Use proper English place names in English output** *(done)* — English place names spoken in the audio (e.g. Ashfield) are recognized as English via Fun-ASR custom hotwords instead of being transliterated to Chinese. See `app/manage_vocab.py` and `FUNASR_HOTWORDS`.
 5. **Hotword source / management** — place-name hotwords currently live in `FUNASR_HOTWORDS` in `.env` and are pushed manually via `manage_vocab.py`. Add a better source: maintain the list in a file (or DB), or let users add words via a bot command, so hotwords can be updated without editing env vars and redeploying.
 6. ✅ **Function-calling loop** *(done)* — the agent (`app/agent.py`) runs a 🔁 tool-calling loop: each round it offers DeepSeek the tool schemas, runs any tool calls it makes, feeds the results back, and loops until DeepSeek returns a plain answer (capped at 4 rounds). First tool is `get_weather` (WeatherAPI.com, `app/weather.py`) — ask things like "你好，明天 Homebush 会下雨吗" and it fetches the real forecast. Set `WEATHERAPI_KEY` / `WEATHER_DEFAULT_LOCATION`.
-7. **Second Interprete tool** allow user to call qwen-asr if being requested to interprete it again. Later request will return same result without calling asr. 
+7. ✅ **Second tool: live bus departures** *(done)* — `get_bus_departures` (`app/transport.py`) hits NSW Transport Open Data's Trip Planner API: `stop_finder` resolves a stop name to an id (or pass a numeric id), `departure_mon` returns the next real-time departures, filtered by route. Defaults to stop `10118084` (Underwood Rd before Powell St, Homebush) and route `526` towards Strathfield. Set `NSW_TRANSPORT_API_KEY` / `NSW_TRANSPORT_DEFAULT_STOP` / `NSW_TRANSPORT_DEFAULT_ROUTE`. Ask "你好，下一班 526 几分钟后到".
 
 ## 后续可做
 - 去重(同一 file_id 不重复识别)、把转写写进数据库做整群纪要。

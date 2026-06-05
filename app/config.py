@@ -59,6 +59,14 @@ MEMORY_MAX_CHARS = int(os.getenv("MEMORY_MAX_CHARS", "1000"))
 WEATHERAPI_KEY = os.getenv("WEATHERAPI_KEY", "")
 WEATHER_DEFAULT_LOCATION = os.getenv("WEATHER_DEFAULT_LOCATION", "Homebush, Sydney")
 
+# NSW Transport Open Data（roadmap #7，实时公交班次工具；不配就降级提示）。
+# 在 https://opendata.transport.nsw.gov.au/ 注册应用拿 key（开通 Trip Planner APIs）。
+NSW_TRANSPORT_API_KEY = os.getenv("NSW_TRANSPORT_API_KEY", "")
+# 默认站点：Underwood Rd before Powell St (Homebush)，526 开往 Strathfield 方向。
+# 可填站名(经 stop_finder 解析)或直接填数字 stop id。
+NSW_TRANSPORT_DEFAULT_STOP = os.getenv("NSW_TRANSPORT_DEFAULT_STOP", "10118084")
+NSW_TRANSPORT_DEFAULT_ROUTE = os.getenv("NSW_TRANSPORT_DEFAULT_ROUTE", "526")
+
 if ASR_PROVIDER == "bailian" and not DASHSCOPE_API_KEY:
     raise RuntimeError("缺少 DASHSCOPE_API_KEY（新加坡区域的 Key）")
 if POLISH_ENABLED and not DEEPSEEK_API_KEY:
